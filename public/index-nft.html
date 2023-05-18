@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Zone NFT Claim</title>
+
+    <script defer src="/__/firebase/9.19.1/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/9.19.1/firebase-database-compat.js"></script>
+    <script defer src="/__/firebase/9.19.1/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/9.19.1/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+
+    <!-- Latest compiled and minified CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+      .btn-wide {
+          width: 100%;
+          max-width: 400%;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="container mt-5">
+      <div class="row">
+        <div class="col-md-12 text-center">
+          <h1 class="mb-4" id="addressArea"></h1>
+          <p class="mb-4" id="xrplMsg"></p>
+          <button type="button" class="btn btn-primary btn-lg mb-3 btn-wide" id="getNFT">Claim NFT</button>
+          <div class="alert alert-danger d-none" id="errorMessage" role="alert"></div>
+          <button type="button" class="btn btn-secondary btn-sm mt-3 d-none" id="logout">Logout</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import 'https://xumm.app/assets/cdn/xumm-oauth2-pkce.min.js?v=2.7.1'
+
+      const queryParams = new URLSearchParams(window.location.search);
+      const taxonidParam = queryParams.get('taxonid');
+      console.log("taxonidParam = " + taxonidParam);
+
+      function startLoadingMessage() {
+        const loadingMessageElement = document.getElementById("xrplMsg");
+        loadingMessageElement.innerText = "Transfering NFT...";
+      }
+
+      function stopLoadingMessage() {
+        document.getElementById("xrplMsg").innerText = "";
+      }      
+
+      function redirectToXRPLDocs() {
+        setTimeout(function () {
+        window.location.href = "https://xrpl.org/nftokencreateoffer.html?utm_source=workshop&utm_medium=jason-morgan-state-mar-23&utm_campaign=dev-advocacy";
+        }, 15000); //will call the function after 15 secs.      
+      }      
+
+      function showError(message) {
+            var errorMessageElement = document.getElementById('errorMessage');
+            errorMessageElement.innerHTML = message;
+            errorMessageElement.classList.remove('d-none');
+      }      
+
+      const xumm = new XummPkce('<your XUMM API key>', {
+        implicit: true, // Implicit: allows to e.g. move from social browser to stock browser
+        redirectUrl: document.location.href + '&custom_state=test'
+      })
+
+      document.getElementById('getNFT').onclick = () => {
+        startLoadingMessage();
+        document.getElementById('logout').classList.remove('d-none');
+        xumm.authorize().catch(e => console.log('e', e))
+      }
+
+      document.getElementById('logout').onclick = () => {
+        xumm.logout();
+        document.getElementById('addressArea').innerText = '';
+        document.getElementById('addressArea').classList.add('d-none');
+        document.getElementById('xrplMsg').innerText = '';
+        document.getElementById('xrplMsg').classList.add('d-none');
+        document.getElementById('errorMessage').classList.add('d-none');
+        document.getElementById('logout').classList.add('d-none');
+        document.getElementById('getNFT').classList.remove('d-none');  
+      }           
+
+      xumm.on("error", (error) => {
+        console.log("error", error)
+      })
+
+      xumm.on("success", async () => {
+        startLoadingMessage();
+        console.log("Success")
+        const state = await xumm.state()
+        document.getElementById('addressArea').innerText = state?.me?.sub
+        document.getElementById('getNFT').classList.add('d-none');
+
+        if ( state?.me ) {
+          const claimNFT = firebase.functions().httpsCallable('claimNFT');
+          try {
+            const result = await claimNFT({ address: state?.me?.sub, taxonid: taxonidParam });
+            stopLoadingMessage();
+            document.getElementById('xrplMsg').innerText = "NFT offer created for your account. You have 10 minutes to accept in Xumm."
+
+            redirectToXRPLDocs();
+          } catch (error) {
+            console.log(error);
+            console.log(error.code);
+            stopLoadingMessage();
+            showError(error.message)
+          }
+                 
+        }        
+      })
+
+      xumm.on("retrieved", async () => {
+        console.log("Retrieved: from localStorage or mobile browser redirect")
+        const state = await xumm.state() 
+        document.getElementById('addressArea').innerText = state?.me?.sub    
+        document.getElementById('logout').classList.remove('d-none');    
+        redirectToXRPLDocs();
+      })
+    </script>    
+
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.min.js"></script> 
+  </body>
+</html>
