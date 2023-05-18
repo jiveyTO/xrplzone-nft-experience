@@ -14,3 +14,12 @@ address: "rLkunnNFiGTESTWRVA7LAqn1Gw9s1"
 last_send: April 27, 2023 at 1:22:02 PM UTC-4
 xrp_sent: 15
 ```
+
+QR code requirements
+You'll need to generate your own QR codes that point to
+```
+public/index.html
+public/index-nft.html
+```
+
+I used this one `https://www.the-qrcode-generator.com/`
